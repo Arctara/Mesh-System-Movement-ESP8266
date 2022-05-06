@@ -34,6 +34,11 @@ WebSocketsClient webSocket;
 DynamicJsonDocument data(1024);
 DynamicJsonDocument receivedData(1024);
 
+//* Device Name
+const String deviceName = "sensor-2";
+const String sensorType = "movementSensor";
+const String centerName = "center";
+
 void IRAM_ATTR movement_detection();
 void IRAM_ATTR final_movement_detection();
 
@@ -142,8 +147,9 @@ void IRAM_ATTR final_movement_detection() {
 }
 
 void sendData() {
-  data["from"] = "movement-sensor";
-  data["to"] = "center";
+  data["from"] = deviceName;
+  data["sensorType"] = sensorType;
+  data["to"] = centerName;
   data["data"] = reading;
   String msg;
   serializeJson(data, msg);
