@@ -9,23 +9,12 @@
 #include <Arduino.h>
 #include <ArduinoJson.h>
 #include <WebSocketsClient.h>
-// #include <painlessMesh.h>
-
-//$ Mesh Configuration
-// #define MESH_PREFIX "ALiVe_MESH"
-// #define MESH_PASSWORD "TmlhdCBzZWthbGkgYW5kYSBtZW5kZWNvZGUgaW5pIC1NZXJ6YQ=="
-// #define MESH_PORT 5555
 
 #define SENSOR_PIN 4
 
 //$ Access Point Configuration
 #define WIFI_SSID "ALiVe_AP"
 #define WIFI_PASS "LeTS_ALiVe"
-
-//*Mesh Configuration
-// Scheduler userScheduler;
-// painlessMesh mesh;
-// int nodeNumber = 1;
 
 String reading;
 
@@ -50,17 +39,9 @@ void IRAM_ATTR final_movement_detection();
 
 void sendData();
 void webSocketEvent(WStype_t type, uint8_t* payload, size_t length);
-// Task taskSendMessage(TASK_SECOND * 1, TASK_FOREVER, &sendMessage);
-
-//$ Needed for painless mesh library
-// void receivedCallback(uint32_t from, String &msg);
-// void newConnectionCallback(uint32_t nodeId);
-// void changedConnectionCallback();
-// void nodeTimeAdjustedCallback(int32_t offset);
 
 void setup() {
   Serial.begin(115200);
-  // mesh.setDebugMsgTypes(ERROR | STARTUP);
 
   pinMode(SENSOR_PIN, INPUT_PULLUP);
   attachInterrupt(digitalPinToInterrupt(SENSOR_PIN), movement_detection,
@@ -75,19 +56,9 @@ void setup() {
   webSocket.begin("192.168.5.1", 80, "/ws");
   webSocket.onEvent(webSocketEvent);
   webSocket.setReconnectInterval(5000);
-
-  // mesh.init(MESH_PREFIX, MESH_PASSWORD, &userScheduler, MESH_PORT);
-  // mesh.onReceive(&receivedCallback);
-  // mesh.onNewConnection(&newConnectionCallback);
-  // mesh.onChangedConnections(&changedConnectionCallback);
-  // mesh.onNodeTimeAdjusted(&nodeTimeAdjustedCallback);
-
-  // userScheduler.addTask(taskSendMessage);
-  // taskSendMessage.enable();
 }
 
 void loop() {
-  // mesh.update();
   current_time = millis();
 
   if (movementDetected) {
@@ -178,7 +149,6 @@ void sendData() {
   serializeJson(data, msg);
   webSocket.sendTXT(msg);
   Serial.println("Data sent!");
-  // mesh.sendBroadcast(msg);
 }
 
 void webSocketEvent(WStype_t type, uint8_t* payload, size_t length) {
@@ -197,31 +167,3 @@ void webSocketEvent(WStype_t type, uint8_t* payload, size_t length) {
     Serial.println(condition);
   }
 }
-
-//$ Needed for painless mesh library
-// void receivedCallback(uint32_t from, String &msg) {
-//   Serial.printf("startHere: Received from %u msg=%s\n", from, msg.c_str());
-//   deserializeJson(receivedData, msg);
-//   if (data["from"].as<String>() == "center" &&
-//       data["to"].as<String>() == "lamp-1") {
-//     if (data["condition"].as<String>() == "true") {
-//       plugCondition = true;
-//       dimmer.setState(ON);
-//     } else {
-//       plugCondition = false;
-//       dimmer.setState(OFF);
-//     }
-//   }
-//   sendMessage();
-// }
-
-// void newConnectionCallback(uint32_t nodeId) {
-//   Serial.printf("--> startHere: New Connection, nodeId = %u\n", nodeId);
-// }
-
-// void changedConnectionCallback() { Serial.printf("Changed connections\n"); }
-
-// void nodeTimeAdjustedCallback(int32_t offset) {
-//   Serial.printf("Adjusted time %u. Offset = %d\n", mesh.getNodeTime(),
-//   offset);
-// }
