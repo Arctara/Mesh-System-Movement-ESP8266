@@ -22,6 +22,7 @@ unsigned long interval = 60000;
 unsigned long prevInterval = 0;
 unsigned long current_time = millis();
 unsigned long last_trigger = 0;
+unsigned long last_scan = 0;
 boolean timer_on = false;
 boolean alreadySent = false;
 boolean movementDetected = false;
@@ -65,6 +66,15 @@ void setup() {
 
 void loop() {
   current_time = millis();
+
+  if (current_time - last_scan >= 10348) {
+    if (webSocket.isConnected()) {
+      Serial.println("WebSocket Connected");
+    } else {
+      Serial.println("Connecting (Please Connect)");
+      webSocket.begin("192.168.5.1", 80, "/ws");
+    }
+  }
 
   if (movementDetected) {
     if (!hasDetach) {
