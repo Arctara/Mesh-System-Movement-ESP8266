@@ -1,15 +1,10 @@
-/*
-    PINOUT
-      PIN 4 = Digital Sensor
-      PIN 14 = LED 1
-      PIN 12 = LED 2
-*/
-
 //$ Include Library
 #include <Arduino.h>
 #include <ArduinoJson.h>
 #include <WebSocketsClient.h>
 
+#define BLUE_LED 14
+#define GREEN_LED 12
 #define SENSOR_PIN 4
 
 //$ Access Point Configuration
@@ -17,18 +12,12 @@
 #define WIFI_PASS "LeTS_ALiVe"
 
 String reading;
+String prevReading;
 
-unsigned long interval = 60000;
-unsigned long prevInterval = 0;
+unsigned long prevMillis = 0;
 unsigned long current_time = millis();
-unsigned long last_trigger = 0;
 unsigned long last_scan = 0;
-boolean timer_on = false;
-boolean alreadySent = false;
-boolean movementDetected = false;
-boolean finalMovementDetected = false;
-boolean hasDetach = false;
-boolean hasExtended = false;
+bool alreadySent = false;
 
 WebSocketsClient webSocket;
 
@@ -49,14 +38,21 @@ void webSocketEvent(WStype_t type, uint8_t* payload, size_t length);
 void setup() {
   Serial.begin(115200);
 
-  pinMode(SENSOR_PIN, INPUT_PULLUP);
-  attachInterrupt(digitalPinToInterrupt(SENSOR_PIN), movement_detection,
-                  RISING);
+  pinMode(SENSOR_PIN, INPUT);
+  pinMode(BLUE_LED, OUTPUT);
+  pinMode(GREEN_LED, OUTPUT);
 
   WiFi.begin(WIFI_SSID, WIFI_PASS);
   while (WiFi.status() != WL_CONNECTED && millis() >= 15000) {
+    digitalWrite(BLUE_LED, HIGH);
+    delay(50);
+    digitalWrite(BLUE_LED, LOW);
     Serial.print(".");
     delay(500);
+  }
+
+  if (WiFi.status() == WL_CONNECTED) {
+    digitalWrite(BLUE_LED, HIGH);
   }
 
   webSocket.begin("192.168.5.1", 80, "/ws");
@@ -68,6 +64,8 @@ void loop() {
   current_time = millis();
 
   if (current_time - last_scan >= 10348) {
+    last_scan = millis();
+
     if (webSocket.isConnected()) {
       Serial.println("WebSocket Connected");
     } else {
@@ -76,84 +74,19 @@ void loop() {
     }
   }
 
-  if (movementDetected) {
-    if (!hasDetach) {
-      detachInterrupt(digitalPinToInterrupt(SENSOR_PIN));
-      hasDetach = true;
-    }
+  if (digitalRead(SENSOR_PIN) == HIGH) {
+    reading = "Ada Gerakan";
   } else {
-    if (hasDetach) {
-      attachInterrupt(digitalPinToInterrupt(SENSOR_PIN), movement_detection,
-                      RISING);
-      hasDetach = false;
-    }
-  }
-
-  if (timer_on && (current_time - last_trigger) > (interval - 15000ul) &&
-      (current_time - last_trigger) < interval) {
-    noInterrupts();
-    attachInterrupt(digitalPinToInterrupt(SENSOR_PIN), final_movement_detection,
-                    RISING);
-    if (finalMovementDetected) {
-      if (!hasExtended) {
-        prevInterval = interval;
-        interval += 60000ul;
-        hasExtended = true;
-      }
-    }
-    interrupts();
-  }
-
-  if (timer_on && (current_time - last_trigger) > prevInterval &&
-      (current_time - last_trigger) < (interval - 15000ul)) {
-    hasExtended = false;
-    finalMovementDetected = false;
-    detachInterrupt(digitalPinToInterrupt(SENSOR_PIN));
-  }
-
-  if (timer_on && (current_time - last_trigger) > interval) {
-    //$ Tampilkan tulisan pada Serial
-    Serial.println("Tidak ada gerakan");
-
-    interval = 60000;
-    hasExtended = false;
-
-    movementDetected = false;
     reading = "Tidak ada gerakan";
-
-    if (!alreadySent) {
-      sendData();
-      alreadySent = true;
-    }
-
-    //$ Set variabel timer on menjadi false
-    timer_on = false;
   }
+
+  if (prevReading != reading) {
+    sendData();
+  }
+
+  prevReading = reading;
+
   webSocket.loop();
-}
-
-void IRAM_ATTR movement_detection() {
-  noInterrupts();
-  Serial.println("Gerakan terdeteksi!");
-  Serial.println(digitalRead(SENSOR_PIN));
-
-  movementDetected = true;
-  reading = "Ada Gerakan";
-
-  sendData();
-
-  alreadySent = false;
-  timer_on = true;
-  last_trigger = millis();
-  interrupts();
-}
-
-void IRAM_ATTR final_movement_detection() {
-  noInterrupts();
-
-  finalMovementDetected = true;
-
-  interrupts();
 }
 
 void sendData() {
